@@ -4,7 +4,6 @@ use std::fs::{write, read};
 use crate::embeddings::{generate_embeddings_string,generate_embeddings_vec};
 
 pub fn main() {
-    println!("valzkai ae");
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string();
     let payload = vec!["Akash loves cooking".to_string(),"Akash does all night coding".to_string()];
     let mut vdb = Grimoire::new(path,payload);
