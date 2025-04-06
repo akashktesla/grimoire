@@ -6,9 +6,10 @@ use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, Sent
 fn main() {
     println!("valzkai ae");
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string();
-    let mut vdb = Grimoire::new(path);
-    // vdb.save_db();
-    vdb.load_db();
+    let payload = vec!["Akash loves cooking".to_string(),"Akash does all night coding".to_string()];
+    let mut vdb = Grimoire::new(path,payload);
+    vdb.save_db();
+    // vdb.load_db();
     println!("vdb: {:?}",vdb);
 }
 
@@ -31,7 +32,6 @@ impl Grimoire{
         let encoded = bincode::encode_to_vec(self,config).unwrap();
         write(self.path.clone(),&encoded)
             .expect(&format!("Unablel to write the file on path: {}",self.path));
-
     }
 
     fn load_db(&mut self){
@@ -42,7 +42,7 @@ impl Grimoire{
         println!("contents: {:?}", self);
     }
 
-    fn generate_embeddings(&mut self, payload:Vec<&str>){
+    fn generate_embeddings(&mut self){
         let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL12V2)
             .create_model()
             .expect("Couldn't Load the embedding model");
@@ -50,12 +50,4 @@ impl Grimoire{
         let embeddings = model.encode(&mut payload).expect("Failed to encode the string");
         debug!("sucessfully created embeddings");
     }
-
 }
-
-
-
-
-
-
-
