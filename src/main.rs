@@ -4,8 +4,10 @@ use std::fs::{write, read};
 use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType, };
 use ::grimoire::embeddings;
 use ::grimoire::grimoire;
+use ::grimoire::hellindex;
 
 fn main() {
-    grimoire::main();
+    hellindex::main();
+    // grimoire::main();
 }
 
