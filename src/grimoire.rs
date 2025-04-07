@@ -2,6 +2,7 @@
 use bincode::{config, Decode, Encode};
 use std::fs::{write, read};
 use crate::embeddings::{generate_embeddings_string,generate_embeddings_vec};
+use rustc_hash::FxHashMap;
 
 pub fn main() {
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string();
@@ -12,6 +13,23 @@ pub fn main() {
     vdb.insert_string("Akash also loves fucking with others".to_string());
     println!("vdb: {:#?}",vdb);
 }
+
+
+#[derive(Encode, Decode, PartialEq, Debug)]
+struct Embedding{
+    embedding: Vec<f32>,
+    text: String
+}
+impl Embedding{
+    fn new(embedding:Vec<f32>,text:String)->Self{
+        return Embedding{
+            embedding,
+            text
+        }
+
+    }
+}
+
 
 #[derive(Encode, Decode, PartialEq, Debug)]
 struct Grimoire{
