@@ -16,17 +16,11 @@ fn generate_metadata(embedding: Vec<f32>,chunk_size:i32)->(Vec<i32>,i64,i32){
        .map(|i| (i*(chunk_size as f32)) as i32)
        .collect();
 
-    let base_chunk_number: i64 = chunk_number
-        .iter()
-        .rev()
-        .enumerate()
-        .map(|(i, &val)| (val as i64) * (chunk_size as i64).pow(i as u32))
-        .sum();
     let rank = chunk_number
         .iter()
         .sum();
 
-    return (chunk_number,base_chunk_number,rank)
+    return (chunk_number,rank)
 }
 
 fn calculate_difference(chunk_number_1:Vec<i32>,chunk_number_2:Vec<i32>)->i32{
