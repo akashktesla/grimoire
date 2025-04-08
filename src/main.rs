@@ -7,7 +7,7 @@ use ::grimoire::grimoire;
 use ::grimoire::hellindex;
 
 fn main() {
-    hellindex::main();
-    // grimoire::main();
+    // hellindex::main();
+    grimoire::main();
 }
 

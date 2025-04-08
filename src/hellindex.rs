@@ -10,10 +10,10 @@ pub fn main(){
 
 }
 
-fn generate_metadata(embedding: Vec<f32>,chunk_size:i32)->(Vec<i32>,i64,i32){
+pub fn generate_metadata(embedding: &Vec<f32>,chunk_size:&i32)->(Vec<i32>,i32){
    let chunk_number:Vec<i32> = embedding
        .into_iter()
-       .map(|i| (i*(chunk_size as f32)) as i32)
+       .map(|i| (i*(*chunk_size as f32)) as i32)
        .collect();
 
     let rank = chunk_number
@@ -23,7 +23,7 @@ fn generate_metadata(embedding: Vec<f32>,chunk_size:i32)->(Vec<i32>,i64,i32){
     return (chunk_number,rank)
 }
 
-fn calculate_difference(chunk_number_1:Vec<i32>,chunk_number_2:Vec<i32>)->i32{
+pub fn calculate_difference(chunk_number_1:Vec<i32>,chunk_number_2:Vec<i32>)->i32{
     return chunk_number_1
         .into_iter()
         .zip(chunk_number_2)
