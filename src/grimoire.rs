@@ -92,5 +92,4 @@ impl Grimoire{
     fn insert_string(&mut self,payload:String){
         self.db.push((payload.clone(),generate_embeddings_string(payload)));
     }
-
 }
