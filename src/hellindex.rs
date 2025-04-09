@@ -13,15 +13,30 @@ pub fn main(){
 
 }
 
-fn get_exponent(x: f32) -> (f32,i32) {
-    if x == 0.0 { //special case
-        return (0.0,0);
+fn get_exponent(x: f32) -> (f32, i32) {
+    if x == 0.0 {
+        return (0.0, 0);
     }
-    let bits = x.to_bits();
+
+    let sign = if x < 0.0 { -1.0 } else { 1.0 };
+    let abs_x = x.abs();
+
+    let bits = abs_x.to_bits();
     let exp2 = ((bits >> 23) & 0xFF) as i32 - 127;
-    let exp10 = (exp2 as f32 * 0.30103).floor() as i32;
-    let mantissa = (x/10.0_f32.powf(exp10 as f32));
-    (mantissa,exp10)
+    let mut exp10 = (exp2 as f32 * 0.30103).floor() as i32;
+
+    let mut mantissa = abs_x / 10f32.powi(exp10);
+
+    // Normalize to [1.0, 10.0)
+    if mantissa >= 10.0 {
+        mantissa /= 10.0;
+        exp10 += 1;
+    } else if mantissa < 1.0 {
+        mantissa *= 10.0;
+        exp10 -= 1;
+    }
+
+    (sign * mantissa, exp10)
 }
 
 pub fn generate_metadata(embedding: &Vec<f32>,chunk_size:&i32)->(Vec<i32>,i32){
