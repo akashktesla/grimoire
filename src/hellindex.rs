@@ -1,8 +1,9 @@
 #![allow(warnings)]
 pub fn main(){
     let embedding = vec![0.000000002,0.0032,0.00043,0.14];
-    let normalized_embedding = normalization(embedding,10);
-    println!("normalized_embedding: {:?}",normalized_embedding);
+    let num = 0.0000334234001; 
+    let exponent = get_exponent(num);
+    println!("Exponent: {:?}",exponent);
     // let chunk_number = generate_metadata(embedding,10);
     // println!("chunk_number: {:?}",chunk_number);
     // let chunk_number_1 = vec![4,6,7,3];
@@ -12,13 +13,16 @@ pub fn main(){
 
 }
 
-
-fn normalization(mut embedding: Vec<f32>,chunk_size:i32 ){
-    embedding.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    println!("sorted: {:?}",embedding);
-
+fn get_exponent(x: f32) -> (f32,i32) {
+    if x == 0.0 { //special case
+        return (0.0,0);
+    }
+    let bits = x.to_bits();
+    let exp2 = ((bits >> 23) & 0xFF) as i32 - 127;
+    let exp10 = (exp2 as f32 * 0.30103).floor() as i32;
+    let mantissa = (x/10.0_f32.powf(exp10 as f32));
+    (mantissa,exp10)
 }
-
 
 pub fn generate_metadata(embedding: &Vec<f32>,chunk_size:&i32)->(Vec<i32>,i32){
    let chunk_number:Vec<i32> = embedding

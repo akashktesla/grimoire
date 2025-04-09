@@ -7,7 +7,7 @@ use rustc_hash::FxHashMap;
 
 pub fn main() {
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string();
-    let payload = vec!["Akash loves cooking".to_string(),"Akash does all night coding".to_string()];
+    let payload = vec!["alsdkjfasdlk asdlfjsadlkfj".to_string(),"Akash does all night coding".to_string()];
     let mut vdb = Grimoire::new(path,payload,10);
     vdb.save_db();
     // vdb.load_db();
