@@ -8,11 +8,11 @@ use rustc_hash::FxHashMap;
 pub fn main() {
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string();
     let payload = vec!["alsdkjfasdlk asdlfjsadlkfj".to_string(),"Akash does all night coding".to_string()];
-    let mut vdb = Grimoire::new(path,payload,10);
+    let mut vdb = Grimoire::new(path,payload,4);
     vdb.save_db();
     // vdb.load_db();
     // vdb.insert_string("Akash also loves fucking with others".to_string());
-    println!("vdb: {:#?}",vdb);
+    println!("vdb: {:?}",vdb);
 }
 
 
@@ -34,17 +34,17 @@ impl Embedding{
 #[derive(Encode, Decode, PartialEq, Debug)]
 struct Grimoire{
     path: String,
-    db: FxHashMap<Vec<i32>,Vec<Embedding>>, //chunk_number -> Embedding
-    rcn:FxHashMap<i32,Vec<Vec<i32>>>, //Rank -> Chunk number lookup^
-    chunk_size:i32
+    db: FxHashMap<Vec<Vec<i32>>,Vec<Embedding>>, //chunk_number -> Embedding
+    rcn:FxHashMap<i32,Vec<Vec<Vec<i32>>>>, //Rank -> Chunk number lookup^
+    chunk_size:i32,
 }
 
 impl Grimoire{
 
     fn new(path: String, payload: Vec<String>,chunk_size:i32) -> Self {
         let embeddings:Vec<Vec<f32>> = generate_embeddings_vec(payload.clone());
-        let mut db:FxHashMap<Vec<i32>,Vec<Embedding>> = FxHashMap::default();
-        let mut rcn:FxHashMap<i32, Vec<Vec<i32>>> = FxHashMap::default();
+        let mut db:FxHashMap<Vec<Vec<i32>>,Vec<Embedding>> = FxHashMap::default();
+        let mut rcn:FxHashMap<i32, Vec<Vec<Vec<i32>>>> = FxHashMap::default();
 
         for (embedding, text) in embeddings.into_iter().zip(payload){
             let (chunk_number,rank) = generate_metadata(&embedding,&chunk_size);

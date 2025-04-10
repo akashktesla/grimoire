@@ -2,7 +2,7 @@
 pub fn main(){
     let embedding = vec![0.000000002,0.0032,0.00043,0.14];
     let num = 0.002;
-    let exponent = get_exponent(num);
+    let exponent = get_exponent(&num);
     println!("Exponent: {:?}",exponent);
     // let chunk_number = generate_metadata(embedding,10);
     // println!("chunk_number: {:?}",chunk_number);
@@ -27,15 +27,15 @@ const POW10: [f32; 77] = [
 
 #[inline(always)]
 fn exp10i(exp: i32) -> f32 {
-    // Clamp to safe range for f32
+    // Clamp to safe range for f32 
     let clamped = exp.clamp(-38, 38);
     POW10[(clamped + 38) as usize]
 }
-fn get_exponent(x: f32) -> (f32, i32) {
-    if x == 0.0 {
+fn get_exponent(x: &f32) -> (f32, i32) {
+    if *x == 0.0 {
         return (0.0, 0);
     }
-    let sign = if x < 0.0 { -1.0 } else { 1.0 };
+    let sign = if *x < 0.0 { -1.0 } else { 1.0 };
     let abs_x = x.abs();
 
     let bits = abs_x.to_bits();
@@ -56,17 +56,19 @@ fn get_exponent(x: f32) -> (f32, i32) {
     return (sign * mantissa, exp10);
 }
 
-pub fn generate_metadata(embedding: &Vec<f32>,chunk_size:&i32)->(Vec<i32>,i32){
-   let chunk_number:Vec<i32> = embedding
-       .into_iter()
-       .map(|i| (i*(*chunk_size as f32)) as i32)
-       .collect();
-
-    let rank = chunk_number
+pub fn generate_metadata(embedding: &Vec<f32>,chunk_size:&i32)->(Vec<Vec<i32>>,i32){
+    let mut chunk_vector = vec![vec![],vec![]];
+    for &i in embedding{
+        let (mantissa, exp) = get_exponent(&i);
+        let scaled = ((mantissa + 10.0) / 20.0) * (*chunk_size as f32);
+        let chunk_number = scaled.floor() as i32;
+        chunk_vector[0].push(chunk_number);
+        chunk_vector[1].push(exp);
+    }
+    let rank = chunk_vector[0]
         .iter()
         .sum();
-
-    return (chunk_number,rank)
+    return (chunk_vector,rank)
 }
 
 pub fn calculate_difference(chunk_number_1:Vec<i32>,chunk_number_2:Vec<i32>)->i32{
