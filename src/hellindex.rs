@@ -63,7 +63,7 @@ pub fn generate_metadata(embedding: &Vec<f32>,chunk_size:&i32)->(Vec<Vec<i32>>,i
         let scaled = ((mantissa + 10.0) / 20.0) * (*chunk_size as f32);
         let chunk_number = scaled.floor() as i32;
         chunk_vector[0].push(chunk_number);
-        chunk_vector[1].push(exp);
+        chunk_vector[1].push(exp.abs());
     }
     let rank = chunk_vector[0]
         .iter()
