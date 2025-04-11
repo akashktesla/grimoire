@@ -8,7 +8,7 @@ pub fn generate_embeddings_vec(payload:Vec<String>)->Vec<Vec<f32>>{
     return model.encode(&payload).expect("Failed to encode the string");
 }
 
-pub fn generate_embeddings_string(payload:String)->Vec<f32>{
+pub fn generate_embeddings_string(payload:&String)->Vec<f32>{
     let model:SentenceEmbeddingsModel = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL12V2). 
         create_model() 
         .expect("Couldn't Load the embedding model");

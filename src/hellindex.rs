@@ -65,10 +65,27 @@ pub fn generate_metadata(embedding: &Vec<f32>,chunk_size:&i32)->(Vec<Vec<i32>>,i
         chunk_vector[0].push(chunk_number);
         chunk_vector[1].push(exp.abs());
     }
-    let rank = chunk_vector[0]
+    let pe = positional_encoding(chunk_vector[0].len());
+    let rank:f32 = chunk_vector[0]
         .iter()
-        .sum();
-    return (chunk_vector,rank)
+        .zip(pe.iter())
+        .map(|(val, weight)| *val as f32 * weight)
+        .sum(); 
+
+    return (chunk_vector,rank as i32)
+}
+
+fn positional_encoding(dim: usize) -> Vec<f32> {
+    (0..dim)
+        .map(|i| {
+            let angle = i as f32 / 10000_f32.powf(i as f32 / dim as f32);
+            if i % 2 == 0 {
+                angle.sin()
+            } else {
+                angle.cos()
+            }
+        })
+        .collect()
 }
 
 pub fn calculate_difference(chunk_number_1:Vec<i32>,chunk_number_2:Vec<i32>)->i32{

@@ -7,9 +7,10 @@ use rustc_hash::FxHashMap;
 
 pub fn main() {
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string();
-    let payload = vec!["alsdkjfasdlk asdlfjsadlkfj".to_string(),"Akash does all night coding".to_string()];
-    let mut vdb = Grimoire::new(path,payload,4);
+    let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
+    let mut vdb = Grimoire::new(path,payload,10);
     vdb.save_db();
+    vdb.similarity_search("cooking".to_string());
     // vdb.load_db();
     // vdb.insert_string("Akash also loves fucking with others".to_string());
     println!("vdb: {:?}",vdb);
@@ -37,6 +38,7 @@ struct Grimoire{
     db: FxHashMap<Vec<Vec<i32>>,Vec<Embedding>>, //chunk_number -> Embedding
     rcn:FxHashMap<i32,Vec<Vec<Vec<i32>>>>, //Rank -> Chunk number lookup^
     chunk_size:i32,
+    rank_list: Vec<i32>
 }
 
 impl Grimoire{
@@ -55,13 +57,15 @@ impl Grimoire{
             rcn.entry(rank)
                 .or_default()
                 .push(chunk_number);
+            rank_list
         }
 
         Self {
             path,
             db,
             rcn,
-            chunk_size
+            chunk_size,
+            rank_list
         }
     }
 
@@ -84,4 +88,27 @@ impl Grimoire{
     fn insert_string(&mut self,payload:String){
         //TODO later
     }
+
+    fn similarity_search(&self,text:String){
+        let embeddings = generate_embeddings_string(&text);
+        let (user_chunk_id,user_rank) = generate_metadata(&embeddings,&self.chunk_size);
+        println!("user_chunk_id: {:?}, user_rank: {:?}",user_chunk_id,user_rank);
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
