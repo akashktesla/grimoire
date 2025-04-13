@@ -1,23 +1,22 @@
 #![allow(warnings)]
-use bincode::{config, Decode, Encode};
 use std::fs::{write, read};
+use std::io::{self, Read};
+use std::fs;
 use crate::embeddings::{generate_embeddings_string,generate_embeddings_vec};
 use crate::hellindex::{generate_metadata};
-use rustc_hash::FxHashMap;
+use rustc_hash::FxHashMap; use std::collections::BTreeMap;
+use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType, SentenceEmbeddingsModel };
 
 pub fn main() {
-    let path = "/home/akash/projects/grimoire/src/test.grm".to_string();
-    let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
+    let path = "/home/akash/projects/grimoire/src/test.grm".to_string(); let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
     let mut vdb = Grimoire::new(path,payload,10);
     vdb.save_db();
-    vdb.similarity_search("cooking".to_string());
-    // vdb.load_db();
+    vdb.load_db();
+    // vdb.similarity_search("cooking".to_string());
     // vdb.insert_string("Akash also loves fucking with others".to_string());
-    println!("vdb: {:?}",vdb);
+    // println!("vdb: {:?}",vdb);
 }
 
-
-#[derive(Encode, Decode, PartialEq, Debug)]
 struct Embedding{
     text: String,
     embedding: Vec<f32>
@@ -31,22 +30,26 @@ impl Embedding{
     }
 }
 
-
-#[derive(Encode, Decode, PartialEq, Debug)]
 struct Grimoire{
     path: String,
     db: FxHashMap<Vec<Vec<i32>>,Vec<Embedding>>, //chunk_number -> Embedding
-    rcn:FxHashMap<i32,Vec<Vec<Vec<i32>>>>, //Rank -> Chunk number lookup^
+    rcn:BTreeMap<i32,Vec<Vec<Vec<i32>>>>, //Rank -> Chunk number lookup^
     chunk_size:i32,
-    rank_list: Vec<i32>
+    embedding_model:SentenceEmbeddingsModel,
 }
 
 impl Grimoire{
 
     fn new(path: String, payload: Vec<String>,chunk_size:i32) -> Self {
-        let embeddings:Vec<Vec<f32>> = generate_embeddings_vec(payload.clone());
+        let embedding_model:SentenceEmbeddingsModel = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL12V2). 
+            create_model() 
+            .expect("Couldn't Load the embedding model");
+
+        let embeddings:Vec<Vec<f32>> = embedding_model.encode(&payload).expect("Failed to encode the string");
+
         let mut db:FxHashMap<Vec<Vec<i32>>,Vec<Embedding>> = FxHashMap::default();
-        let mut rcn:FxHashMap<i32, Vec<Vec<Vec<i32>>>> = FxHashMap::default();
+
+        let mut rcn:BTreeMap<i32, Vec<Vec<Vec<i32>>>> = BTreeMap::new();
 
         for (embedding, text) in embeddings.into_iter().zip(payload){
             let (chunk_number,rank) = generate_metadata(&embedding,&chunk_size);
@@ -57,32 +60,56 @@ impl Grimoire{
             rcn.entry(rank)
                 .or_default()
                 .push(chunk_number);
-            rank_list
         }
 
-        Self {
+        return Self {
             path,
             db,
             rcn,
             chunk_size,
-            rank_list
-        }
+            embedding_model
+        };
     }
 
-    
+    fn serialize(&self)->Vec<u8>{
+        let path_bytes = self.path.as_bytes().to_vec();
+        let len_path_bytes = path_bytes.len().to_le_bytes();
+        let mut data_to_save = Vec::new();
+        // println!("path bytes: {:?}, len: {:08b}",path_bytes, len_path_bytes);
+        data_to_save.extend(len_path_bytes);
+        data_to_save.extend(path_bytes);
+        // println!("{:?}",to_save);
+        return data_to_save;
+
+    }
     fn save_db(&self){
-        let config = config::standard();
-        let encoded = bincode::encode_to_vec(self,config).unwrap();
-        write(self.path.clone(),&encoded)
-            .expect(&format!("Unablel to write the file on path: {}",self.path));
+        let data_to_save = self.serialize();
+        fs::write(&self.path, data_to_save).expect("Unable to write the file");
     }
 
-    fn load_db(&mut self){
-        let contents = read(self.path.clone()).unwrap();
-        let config = config::standard();
-        let (loaded,_):(Grimoire,usize) = bincode::decode_from_slice(&contents,config).unwrap();
-        *self = loaded;
-        println!("contents: {:?}", self);
+    fn deserialize(&self){
+        let mut file_data = Vec::new();
+        let mut file = fs::File::open(&self.path).expect("Unable to open the file");
+        file.read_to_end(&mut file_data).expect("Unable to read the file");
+
+        let length_bytes = &file_data[0..8]; 
+        let path_len = u64::from_le_bytes(length_bytes.try_into().expect("Invalid length bytes"));
+        println!("path_len:{:?}",path_len);
+
+        // Step 3: Deserialize the path bytes using the length we read
+        let path_bytes = &file_data[8..(8 + path_len as usize)]; // Get the path bytes based on length
+        println!("path_bytes:{:?}",path_bytes);
+
+
+        // Step 4: Convert the path bytes back to a String
+        let path = String::from_utf8(path_bytes.to_vec()).expect("Invalid UTF-8 sequence");
+        println!("path: {:?}",path);
+
+    }
+
+    fn load_db(&self){
+        self.deserialize();
+
     }
 
     fn insert_string(&mut self,payload:String){
@@ -92,19 +119,30 @@ impl Grimoire{
     fn similarity_search(&self,text:String){
         let embeddings = generate_embeddings_string(&text);
         let (user_chunk_id,user_rank) = generate_metadata(&embeddings,&self.chunk_size);
-        println!("user_chunk_id: {:?}, user_rank: {:?}",user_chunk_id,user_rank);
+        // println!("user_chunk_id: {:?}, user_rank: {:?}",user_chunk_id,user_rank);
+        match self.rcn.get(&user_rank){
+            Some(value)=>{
+                println!("value: {:?}",value)
+
+            }
+            None=>{
+                match self.rcn.range(..user_rank).next_back(){
+                    Some((rank,chunk_id))=>{
+                        // println!("val: {:?}",val);
+                        let embedding = self.db.get(&chunk_id[0]).unwrap();
+                        println!("Embedding: {:?}",embedding[0].text)
+                    }
+                    None=>{
+                        println!("No value found");
+                    }
+
+                }
+
+            }
+
+        }
 
     }
-
-
-
-
-
-
-
-
-
-
 
 
 
