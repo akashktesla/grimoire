@@ -2,17 +2,19 @@
 use std::fs::{write, read};
 use std::io::{self, Read};
 use std::fs;
-use crate::embeddings::{generate_embeddings_string,generate_embeddings_vec};
 use crate::hellindex::{generate_metadata};
 use rustc_hash::FxHashMap; use std::collections::BTreeMap;
 use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType, SentenceEmbeddingsModel };
 
 pub fn main() {
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string(); let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
-    let mut vdb = Grimoire::new(path,payload,10);
-    vdb.save_db();
-    vdb.load_db();
-    // vdb.similarity_search("cooking".to_string());
+    let model_id = "AllMiniLmL12V2".to_string();
+    let mut vdb = Grimoire::new(path,payload,10,&model_id);
+    // vdb.save_db();
+    // vdb.load_db();
+    println!("a");
+    vdb.similarity_search("cooking".to_string());
+    println!("b");
     // vdb.insert_string("Akash also loves fucking with others".to_string());
     // println!("vdb: {:?}",vdb);
 }
@@ -40,15 +42,18 @@ struct Grimoire{
 
 impl Grimoire{
 
-    fn new(path: String, payload: Vec<String>,chunk_size:i32) -> Self {
-        let embedding_model:SentenceEmbeddingsModel = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL12V2). 
-            create_model() 
-            .expect("Couldn't Load the embedding model");
+    fn new(path: String,payload: Vec<String>,chunk_size:i32,model_id:&String) -> Self {
+        let model_type = Grimoire::string_to_model(model_id).unwrap();
+        println!("Model loading started");
+        // let embedding_model:SentenceEmbeddingsModel = SentenceEmbeddingsBuilder::remote(model_type). 
+        //     create_model() 
+        //     .expect("Couldn't Load the embedding model");
+        let SentenceEmbeddingsBuilder::local("").create_model().expect("couldn't create the model");
+        println!("Model loading ended");
+
 
         let embeddings:Vec<Vec<f32>> = embedding_model.encode(&payload).expect("Failed to encode the string");
-
         let mut db:FxHashMap<Vec<Vec<i32>>,Vec<Embedding>> = FxHashMap::default();
-
         let mut rcn:BTreeMap<i32, Vec<Vec<Vec<i32>>>> = BTreeMap::new();
 
         for (embedding, text) in embeddings.into_iter().zip(payload){
@@ -69,6 +74,21 @@ impl Grimoire{
             chunk_size,
             embedding_model
         };
+    }
+
+    fn string_to_model(model_id:&String)->Option<SentenceEmbeddingsModelType>{
+        match model_id.as_str(){
+            "AllMiniLmL12V2"=>{return Some(SentenceEmbeddingsModelType::AllMiniLmL12V2)}
+            _ =>{return None}
+        }
+    }
+
+    fn generate_embeddings_vec(&self,payload:Vec<String>)->Vec<Vec<f32>>{
+        return self.embedding_model.encode(&payload).expect("Failed to encode the string");
+    }
+
+    fn generate_embeddings_string(&self,payload:&String)->Vec<f32>{
+        return self.embedding_model.encode(&vec![payload]).expect("Failed to encode the string")[0].clone();
     }
 
     fn serialize(&self)->Vec<u8>{
@@ -117,7 +137,7 @@ impl Grimoire{
     }
 
     fn similarity_search(&self,text:String){
-        let embeddings = generate_embeddings_string(&text);
+        let embeddings = self.generate_embeddings_string(&text);
         let (user_chunk_id,user_rank) = generate_metadata(&embeddings,&self.chunk_size);
         // println!("user_chunk_id: {:?}, user_rank: {:?}",user_chunk_id,user_rank);
         match self.rcn.get(&user_rank){
