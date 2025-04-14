@@ -8,6 +8,7 @@ use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, Sent
 
 pub fn main() {
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string(); let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
+    let embedding_model_path = "/home/".to_string();
     let model_id = "AllMiniLmL12V2".to_string();
     let mut vdb = Grimoire::new(path,payload,10,&model_id);
     // vdb.save_db();
@@ -36,16 +37,13 @@ struct Grimoire{
     rcn:BTreeMap<i32,Vec<Vec<Vec<i32>>>>, //Rank -> Chunk number lookup^
     chunk_size:i32,
     embedding_model:SentenceEmbeddingsModel,
+    embedding_model_path:String
 }
 
 impl Grimoire{
 
     fn new(path: String,payload: Vec<String>,chunk_size:i32,model_id:&String) -> Self {
-        // let model_type = Grimoire::string_to_model(model_id).unwrap();
         println!("Model loading started");
-        // let embedding_model:SentenceEmbeddingsModel = SentenceEmbeddingsBuilder::remote(model_type). 
-        //     create_model() 
-        //     .expect("Couldn't Load the embedding model");
         let embedding_model = SentenceEmbeddingsBuilder
             ::local("/home/akash/projects/grimoire/src/models/all-MiniLM-L6-v2")
             .create_model()
@@ -56,8 +54,7 @@ impl Grimoire{
         let mut db:FxHashMap<Vec<Vec<i32>>,Vec<Embedding>> = FxHashMap::default();
         let mut rcn:BTreeMap<i32, Vec<Vec<Vec<i32>>>> = BTreeMap::new();
 
-        for (embedding, text) in embeddings.into_iter().zip(payload){
-            let (chunk_number,rank) = generate_metadata(&embedding,&chunk_size);
+        for (embedding, text) in embeddings.into_iter().zip(payload){ let (chunk_number,rank) = generate_metadata(&embedding,&chunk_size);
             db.entry(chunk_number.clone())
                 .or_default()
                 .push(Embedding::new(text,embedding));
@@ -74,13 +71,6 @@ impl Grimoire{
             chunk_size,
             embedding_model
         };
-    }
-
-    fn string_to_model(model_id:&String)->Option<SentenceEmbeddingsModelType>{
-        match model_id.as_str(){
-            "AllMiniLmL12V2"=>{return Some(SentenceEmbeddingsModelType::AllMiniLmL12V2)}
-            _ =>{return None}
-        }
     }
 
     fn generate_embeddings_vec(&self,payload:Vec<String>)->Vec<Vec<f32>>{
