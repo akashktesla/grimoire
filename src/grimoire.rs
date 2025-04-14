@@ -12,9 +12,7 @@ pub fn main() {
     let mut vdb = Grimoire::new(path,payload,10,&model_id);
     // vdb.save_db();
     // vdb.load_db();
-    println!("a");
     vdb.similarity_search("cooking".to_string());
-    println!("b");
     // vdb.insert_string("Akash also loves fucking with others".to_string());
     // println!("vdb: {:?}",vdb);
 }
@@ -43,14 +41,16 @@ struct Grimoire{
 impl Grimoire{
 
     fn new(path: String,payload: Vec<String>,chunk_size:i32,model_id:&String) -> Self {
-        let model_type = Grimoire::string_to_model(model_id).unwrap();
+        // let model_type = Grimoire::string_to_model(model_id).unwrap();
         println!("Model loading started");
         // let embedding_model:SentenceEmbeddingsModel = SentenceEmbeddingsBuilder::remote(model_type). 
         //     create_model() 
         //     .expect("Couldn't Load the embedding model");
-        let SentenceEmbeddingsBuilder::local("").create_model().expect("couldn't create the model");
+        let embedding_model = SentenceEmbeddingsBuilder
+            ::local("/home/akash/projects/grimoire/src/models/all-MiniLM-L6-v2")
+            .create_model()
+            .expect("couldn't create the model");
         println!("Model loading ended");
-
 
         let embeddings:Vec<Vec<f32>> = embedding_model.encode(&payload).expect("Failed to encode the string");
         let mut db:FxHashMap<Vec<Vec<i32>>,Vec<Embedding>> = FxHashMap::default();
@@ -141,8 +141,9 @@ impl Grimoire{
         let (user_chunk_id,user_rank) = generate_metadata(&embeddings,&self.chunk_size);
         // println!("user_chunk_id: {:?}, user_rank: {:?}",user_chunk_id,user_rank);
         match self.rcn.get(&user_rank){
-            Some(value)=>{
-                println!("value: {:?}",value)
+            Some(chunk_id)=>{
+                let embedding = self.db.get(&chunk_id[0]).unwrap();
+                println!("Embedding: {:?}",embedding[0].text)
 
             }
             None=>{
@@ -157,11 +158,8 @@ impl Grimoire{
                     }
 
                 }
-
             }
-
         }
-
     }
 
 
