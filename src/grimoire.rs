@@ -8,9 +8,8 @@ use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, Sent
 
 pub fn main() {
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string(); let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
-    let embedding_model_path = "/home/".to_string();
-    let model_id = "AllMiniLmL12V2".to_string();
-    let mut vdb = Grimoire::new(path,payload,10,&model_id);
+    let emodel_path = "/home/akash/.models/all-MiniLM-L6-v2".to_string();
+    let mut vdb = Grimoire::new(path,payload,10,emodel_path);
     // vdb.save_db();
     // vdb.load_db();
     vdb.similarity_search("cooking".to_string());
@@ -42,19 +41,18 @@ struct Grimoire{
 
 impl Grimoire{
 
-    fn new(path: String,payload: Vec<String>,chunk_size:i32,model_id:&String) -> Self {
-        println!("Model loading started");
+    fn new(path: String,payload: Vec<String>,chunk_size:i32,embedding_model_path:String) -> Self {
         let embedding_model = SentenceEmbeddingsBuilder
-            ::local("/home/akash/projects/grimoire/src/models/all-MiniLM-L6-v2")
+            ::local(&embedding_model_path)
             .create_model()
             .expect("couldn't create the model");
-        println!("Model loading ended");
 
         let embeddings:Vec<Vec<f32>> = embedding_model.encode(&payload).expect("Failed to encode the string");
         let mut db:FxHashMap<Vec<Vec<i32>>,Vec<Embedding>> = FxHashMap::default();
         let mut rcn:BTreeMap<i32, Vec<Vec<Vec<i32>>>> = BTreeMap::new();
 
-        for (embedding, text) in embeddings.into_iter().zip(payload){ let (chunk_number,rank) = generate_metadata(&embedding,&chunk_size);
+        for (embedding, text) in embeddings.into_iter().zip(payload){ 
+            let (chunk_number,rank) = generate_metadata(&embedding,&chunk_size);
             db.entry(chunk_number.clone())
                 .or_default()
                 .push(Embedding::new(text,embedding));
@@ -69,7 +67,8 @@ impl Grimoire{
             db,
             rcn,
             chunk_size,
-            embedding_model
+            embedding_model,
+            embedding_model_path
         };
     }
 
@@ -119,7 +118,6 @@ impl Grimoire{
 
     fn load_db(&self){
         self.deserialize();
-
     }
 
     fn insert_string(&mut self,payload:String){
@@ -151,10 +149,5 @@ impl Grimoire{
             }
         }
     }
-
-
-
-
-
 
 }
