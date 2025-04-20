@@ -148,7 +148,7 @@ impl Grimoire{
                     None=>{}
                 }
                 println!("candidates: {:?}",candidates);
-                let mut similarity_vec:Vec<f64> = Vec::new();
+                let mut similarity_vec :Vec<f64>= Vec::new();
                 for i in candidates{
                     let cid = i[0].clone();
                     let eid = i[1].clone();
