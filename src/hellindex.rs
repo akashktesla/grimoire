@@ -88,11 +88,20 @@ fn positional_encoding(dim: usize) -> Vec<f32> {
         .collect()
 }
 
-pub fn calculate_difference(chunk_number_1:Vec<i32>,chunk_number_2:Vec<i32>)->i32{
-    return chunk_number_1
+pub fn calculate_difference(mcn1:Vec<i32>,mcn2:Vec<i32>,ecn1:Vec<i32>,ecn2:Vec<i32>)->i32{
+    let mantissa_diff:i32 =  mcn1
         .into_iter()
-        .zip(chunk_number_2)
+        .zip(mcn2)
         .map(|(a,b)|(a-b).abs())
         .sum();
+    let mantissa_diff:i32 =  ecn1
+            .into_iter()
+            .zip(ecn2)
+            .map(|(a,b)|(a-b).abs())
+            .sum();
+
+
+
+    return 0;
 }
 

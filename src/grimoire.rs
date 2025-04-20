@@ -5,6 +5,7 @@ use std::fs;
 use crate::hellindex::{generate_metadata};
 use rustc_hash::FxHashMap; use std::collections::BTreeMap;
 use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType, SentenceEmbeddingsModel };
+use tch::Device;
 
 pub fn main() {
     let path = "/home/akash/projects/grimoire/src/test.grm".to_string(); let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
@@ -135,17 +136,25 @@ impl Grimoire{
 
             }
             None=>{
+                let mut candidates = Vec::new();
+                //Lower
                 match self.rcn.range(..user_rank).next_back(){
-                    Some((rank,chunk_id))=>{
-                        // println!("val: {:?}",val);
-                        let embedding = self.db.get(&chunk_id[0]).unwrap();
-                        println!("Embedding: {:?}",embedding[0].text)
-                    }
-                    None=>{
-                        println!("No value found");
-                    }
+                     Some((_, temp))=>candidates.extend(temp),
+                     None=>{}
+                };
+                //upper
+                match self.rcn.range(user_rank..).next(){
+                    Some((_,temp))=>candidates.extend(temp),
+                    None=>{}
+                }
+                println!("candidates: {:?}",candidates);
+                for i in candidates{
+                    let cid = i[0].clone();
+                    let eid = i[1].clone();
+
 
                 }
+
             }
         }
     }
