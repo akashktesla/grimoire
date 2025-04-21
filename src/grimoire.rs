@@ -152,6 +152,7 @@ impl Grimoire{
                 for i in candidates{
                     let cid = i[0].clone();
                     let eid = i[1].clone();
+
                 }
 
             }
