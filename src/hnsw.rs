@@ -14,11 +14,19 @@ pub fn main(){
     ];
 }
 
+type NodeId = usize;
 
 struct HnswNode{
-    id:usize,
-    embedding: Embedding,
-    levels: HashMap<i32, Vec<HnswNode>>
+    id:NodeId,
+    embedding: Embedding, 
+    level:i32, //level of the node
+    levels: HashMap<i32, Vec<NodeId>> // level - node_id
+}
+
+struct HnswEngine{
+    entry_point: HnswNode, //dynamically updated
+    max_level:i32, // for tracking
+    nodes: HashMap<NodeId,HnswNode> //global pool of nodes
 }
 
 
