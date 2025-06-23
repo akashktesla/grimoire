@@ -18,12 +18,12 @@ pub fn main() {
     // println!("vdb: {:?}",vdb);
 }
 
-struct Embedding{
+pub struct Embedding{
     text: String,
     embedding: Vec<f32>
 }
 impl Embedding{
-    fn new(text:String, embedding:Vec<f32>)->Self{
+    pub fn new(text:String, embedding:Vec<f32>)->Self{
         return Embedding{
             text,
             embedding,
