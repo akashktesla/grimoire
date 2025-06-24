@@ -18,6 +18,7 @@ pub fn main() {
     // println!("vdb: {:?}",vdb);
 }
 
+#[derive(Clone, Debug)]
 pub struct Embedding{
     text: String,
     embedding: Vec<f32>
