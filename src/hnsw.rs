@@ -54,7 +54,6 @@ impl HnswEngine{
     fn new(max_level:u32,embedding_model:SentenceEmbeddingsModel,embedding_model_path:String){
     }
 
-    //TODO optimizie by implementing clone trait
     fn load(&mut self,chunks:Vec<String>){
         for i in chunks{
             let embedding = self.generate_embeddings_string(&i);
@@ -63,9 +62,15 @@ impl HnswEngine{
             if level > self.max_level {
                 self.entry_point = node.clone();
             }
+            //TODO Greedy search here to find neighbors
             self.nodes.insert(self.current_node_id,  node);
         }
     }
+
+    fn find_neighbours_greedy(user_query:&Embedding){
+
+    }
+
     fn traverse(user_query:String,){
 
     }

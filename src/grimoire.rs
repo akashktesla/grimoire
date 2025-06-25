@@ -20,8 +20,8 @@ pub fn main() {
 
 #[derive(Clone, Debug)]
 pub struct Embedding{
-    text: String,
-    embedding: Vec<f32>
+    pub text: String,
+    pub embedding: Vec<f32>
 }
 impl Embedding{
     pub fn new(text:String, embedding:Vec<f32>)->Self{
