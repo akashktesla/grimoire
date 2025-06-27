@@ -102,13 +102,16 @@ impl HnswEngine{
             //TODO Greedy search here to find neighbors
             self.find_neighbours_greedy(&node.embedding);
             self.nodes.insert(self.current_node_id,  node);
+            self.current_node_id = self.current_node_id+1
         }
     }
 
     fn find_neighbours_greedy(&self,user_query:&Embedding){
+        println!("user query: {:?}",user_query.text);
+        // println!("node valeus: {:?}",self.nodes.values());
         for i in self.nodes.values(){
             let similarity = cosine_similarity(&user_query.embedding , &i.embedding.embedding);
-            println!("similarity: {}",similarity);
+            println!("i:{},similarity: {}",i.embedding.text,similarity);
         }
     }
 
