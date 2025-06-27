@@ -30,6 +30,12 @@ impl Embedding{
             embedding,
         }
     }
+    pub fn new_empty()->Embedding{
+        Embedding{
+            text:String::from(""),
+            embedding:Vec::new()
+        }
+    }
 }
 
 struct Grimoire{

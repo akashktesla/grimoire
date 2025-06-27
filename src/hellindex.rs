@@ -105,14 +105,14 @@ pub fn calculate_difference(mcn1:Vec<i32>,mcn2:Vec<i32>,ecn1:Vec<i32>,ecn2:Vec<i
     return 0;
 }
 
-pub fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
-    let dot_product: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
-    let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+pub fn cosine_similarity(a:&Vec<f32>, b:&Vec<f32>) -> f32 {
+    let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+    let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
 
     if norm_a == 0.0 || norm_b == 0.0 {
         return 0.0; // Avoid division by zero
     }
 
-    return dot_product / (norm_a * norm_b);
+    dot_product / (norm_a * norm_b)
 }

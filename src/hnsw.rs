@@ -1,5 +1,6 @@
 #![allow(warnings)]
 use crate::grimoire::Embedding;
+use crate::hellindex::cosine_similarity;
 use std::collections::HashMap;
 use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType, SentenceEmbeddingsModel };
 use rand::Rng;
@@ -14,6 +15,15 @@ pub fn main(){
         String::from("Akash is a great guy"),
         String::from("God doesn't exist"),
     ];
+    let max_level = 5;
+     
+    let embedding_model_path:String = "/home/akash/.models/all-MiniLM-L6-v2".to_string();
+    let level_probability:f64 = 0.4; //rounded from 0,36;
+    let eq_construction :u32 = 200;
+    let eq_search:u32 = 70;
+    let mut engine:HnswEngine = HnswEngine::new(max_level, embedding_model_path, level_probability, eq_construction, eq_search); 
+    engine.load(sentences);
+    
 }
 
 type NodeId = u32;
@@ -33,9 +43,17 @@ impl HnswNode{
             level,
             levels
         }
-
     }
 
+    fn new_empty()->HnswNode{
+        return HnswNode{
+            id:0,
+            embedding:Embedding::new_empty(),
+            level:0,
+            levels:HashMap::new()
+        }
+
+    }
 }
 
 struct HnswEngine{
@@ -51,10 +69,29 @@ struct HnswEngine{
 }
 
 impl HnswEngine{
-    fn new(max_level:u32,embedding_model:SentenceEmbeddingsModel,embedding_model_path:String){
+    fn new(max_level:u32, embedding_model_path:String,
+        level_probability:f64, eq_construction:u32, eq_search:u32) -> HnswEngine{
+        let embedding_model = SentenceEmbeddingsBuilder
+            ::local(&embedding_model_path)
+            .create_model()
+            .expect("couldn't create the model");
+
+        let entry_point = HnswNode::new_empty();
+        return HnswEngine{
+            entry_point,
+            max_level,
+            embedding_model,
+            embedding_model_path,
+            nodes:HashMap::new(),
+            current_node_id:0,
+            level_probability,
+            eq_construction,
+            eq_search
+
+        }
     }
 
-    fn load(&mut self,chunks:Vec<String>){
+    fn load(&mut self, chunks:Vec<String>){
         for i in chunks{
             let embedding = self.generate_embeddings_string(&i);
             let level = self.generate_level();
@@ -63,12 +100,16 @@ impl HnswEngine{
                 self.entry_point = node.clone();
             }
             //TODO Greedy search here to find neighbors
+            self.find_neighbours_greedy(&node.embedding);
             self.nodes.insert(self.current_node_id,  node);
         }
     }
 
-    fn find_neighbours_greedy(user_query:&Embedding){
-
+    fn find_neighbours_greedy(&self,user_query:&Embedding){
+        for i in self.nodes.values(){
+            let similarity = cosine_similarity(&user_query.embedding , &i.embedding.embedding);
+            println!("similarity: {}",similarity);
+        }
     }
 
     fn traverse(user_query:String,){
