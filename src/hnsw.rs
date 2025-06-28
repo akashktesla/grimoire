@@ -27,21 +27,39 @@ pub fn main(){
 }
 
 type NodeId = u32;
+    
+#[derive(Debug, Clone)]
+struct Neighbour {
+    node_id: NodeId,
+    similarity: f32,
+}
+
+impl Neighbour{
+    fn new(node_id:NodeId,similarity:f32)->Neighbour{
+        return Neighbour{
+            node_id,
+            similarity
+        }
+
+    }
+}
+
+
 #[derive(Clone, Debug)]
 struct HnswNode{
     id:NodeId,
     embedding: Embedding, 
     level:u32, //level of the node
-    levels: HashMap<u32, Vec<NodeId>> // level - node_id
+    neighbours: HashMap<u32, Vec<Neighbour>> // level - node_id
 }
 
 impl HnswNode{
-    fn new(id:NodeId,embedding:Embedding,level:u32,levels:HashMap<u32,Vec<NodeId>>)->HnswNode{
+    fn new(id:NodeId,embedding:Embedding,level:u32,neighbours:HashMap<u32,Vec<Neighbour>>)->HnswNode{
         return HnswNode{
             id,
             embedding,
             level,
-            levels
+            neighbours
         }
     }
 
@@ -50,7 +68,7 @@ impl HnswNode{
             id:0,
             embedding:Embedding::new_empty(),
             level:0,
-            levels:HashMap::new()
+            neighbours:HashMap::new()
         }
 
     }
