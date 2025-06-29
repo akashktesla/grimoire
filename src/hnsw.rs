@@ -19,9 +19,10 @@ pub fn main(){
      
     let embedding_model_path:String = "/home/akash/.models/all-MiniLM-L6-v2".to_string();
     let level_probability:f64 = 0.4; //rounded from 0,36;
+    let max_neighbours:u32 = 5;
     let eq_construction :u32 = 200;
     let eq_search:u32 = 70;
-    let mut engine:HnswEngine = HnswEngine::new(max_level, embedding_model_path, level_probability, eq_construction, eq_search); 
+    let mut engine:HnswEngine = HnswEngine::new(max_level, embedding_model_path, level_probability, eq_construction, eq_search,max_neighbours); 
     engine.load(sentences);
     
 }
@@ -72,6 +73,28 @@ impl HnswNode{
         }
 
     }
+
+    fn insert_neighbour(&mut self, level:u32, node_id:NodeId, similarity:f32, max_neighbours:u32){
+        match self.neighbours.get_mut(&level){
+            Some(neighbours)=>{
+                if neighbours.len() as u32 > max_neighbours { //aldready full
+                    if similarity < neighbours.last().unwrap().similarity { //optimization 
+                        return; //break the function
+                    }
+                    neighbours.push(Neighbour::new(node_id,similarity));
+                    neighbours.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+                    neighbours.pop();
+                }
+                else{
+                    neighbours.push(Neighbour::new(node_id,similarity));
+                    neighbours.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+                }
+            },
+            None=>{
+                self.neighbours.insert(level,vec![Neighbour::new(level,similarity)]);
+            }
+        }
+    }
 }
 
 struct HnswEngine{
@@ -82,13 +105,16 @@ struct HnswEngine{
     nodes: HashMap<NodeId,HnswNode>, //global pool of nodes
     current_node_id: NodeId,
     level_probability:f64,
+    max_neighbours:u32,
     eq_construction:u32,
-    eq_search:u32
+    eq_search:u32,
 }
 
 impl HnswEngine{
     fn new(max_level:u32, embedding_model_path:String,
-        level_probability:f64, eq_construction:u32, eq_search:u32) -> HnswEngine{
+        level_probability:f64, eq_construction:u32, eq_search:u32, max_neighbours:u32) -> HnswEngine{
+
+
         let embedding_model = SentenceEmbeddingsBuilder
             ::local(&embedding_model_path)
             .create_model()
@@ -103,9 +129,9 @@ impl HnswEngine{
             nodes:HashMap::new(),
             current_node_id:0,
             level_probability,
+            max_neighbours,
             eq_construction,
-            eq_search
-
+            eq_search,
         }
     }
 
@@ -118,17 +144,21 @@ impl HnswEngine{
                 self.entry_point = node.clone();
             }
             //TODO Greedy search here to find neighbors
-            self.find_neighbours_greedy(&node.embedding);
-            self.nodes.insert(self.current_node_id,  node);
+            let current_node_id = self.current_node_id.clone();
+            self.nodes.insert(current_node_id,  node);
+            self.update_neighbours_greedy(&current_node_id,level);
             self.current_node_id = self.current_node_id+1
         }
     }
 
-    fn find_neighbours_greedy(&self,user_query:&Embedding){
-        println!("user query: {:?}",user_query.text);
-        // println!("node valeus: {:?}",self.nodes.values());
+    fn update_neighbours_greedy(&mut self,node_id:&NodeId,level:u32){
+        //TODO rework this shit to consider all levels bro
+        // println!("node values: {:?}",self.nodes.values());
+        let node = self.nodes.get_mut(node_id).unwrap();
+        let embedding = &self.nodes.get(node_id).unwrap().embedding;
         for i in self.nodes.values(){
-            let similarity = cosine_similarity(&user_query.embedding , &i.embedding.embedding);
+            let similarity = cosine_similarity(&embedding.embedding, &i.embedding.embedding);
+            node.insert_neighbour(level) //fix this shit
             println!("i:{},similarity: {}",i.embedding.text,similarity);
         }
     }
