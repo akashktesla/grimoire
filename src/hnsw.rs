@@ -4,6 +4,8 @@ use crate::hellindex::cosine_similarity;
 use std::{collections::HashMap, hash::Hash};
 use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType, SentenceEmbeddingsModel };
 use rand::Rng;
+use std::fmt;
+use std::fmt::Debug;
 
 pub fn main(){
 
@@ -24,6 +26,7 @@ pub fn main(){
     let eq_search:u32 = 70;
     let mut engine:HnswEngine = HnswEngine::new(max_level, embedding_model_path, level_probability, eq_construction, eq_search,max_neighbours); 
     engine.load(sentences);
+    println!("{:?}",engine);
     
 }
 
@@ -74,28 +77,29 @@ impl HnswNode{
 
     }
 
-    fn insert_neighbour(&mut self, level:u32, node_id:NodeId, similarity:f32, max_neighbours:u32){
+    fn insert_neighbour(&mut self, level:&u32, node_id:&NodeId, similarity:&f32, max_neighbours:&u32){
         match self.neighbours.get_mut(&level){
             Some(neighbours)=>{
-                if neighbours.len() as u32 > max_neighbours { //aldready full
-                    if similarity < neighbours.last().unwrap().similarity { //optimization 
+                if &(neighbours.len() as u32) > max_neighbours { //aldready full
+                    if *similarity < neighbours.last().unwrap().similarity { //optimization 
                         return; //break the function
                     }
-                    neighbours.push(Neighbour::new(node_id,similarity));
+                    neighbours.push(Neighbour::new(*node_id,*similarity));
                     neighbours.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
                     neighbours.pop();
                 }
                 else{
-                    neighbours.push(Neighbour::new(node_id,similarity));
+                    neighbours.push(Neighbour::new(*node_id,*similarity));
                     neighbours.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
                 }
             },
             None=>{
-                self.neighbours.insert(level,vec![Neighbour::new(level,similarity)]);
+                self.neighbours.insert(*level,vec![Neighbour::new(*level,*similarity)]);
             }
         }
     }
 }
+
 
 struct HnswEngine{
     entry_point: HnswNode, //dynamically updated
@@ -110,6 +114,36 @@ struct HnswEngine{
     eq_construction:u32,
     eq_search:u32,
 }
+
+impl Debug for HnswEngine{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "HnswEngine: 
+            entry_point: {:?}, 
+            max_level: {},
+            embedding_model_path: {},
+            nodes: {:#?},
+            level_nodes: {:?},
+            current_node_id: {},
+            level_probability: {},
+            max_neighbours: {},
+            eq_construction: {},
+            eq_search: {}
+            ",
+            self.entry_point,
+            self.max_level,
+            self.embedding_model_path,
+            self.nodes,
+            self.level_nodes,
+            self.current_node_id,
+            self.level_probability,
+            self.max_neighbours,
+            self.eq_construction,
+            self.eq_search)
+    }
+
+}
+
+
 
 impl HnswEngine{
     fn new(max_level:u32, embedding_model_path:String,
@@ -164,14 +198,23 @@ impl HnswEngine{
     }
 
     fn update_neighbours_greedy(&mut self,node_id:&NodeId,level:u32){
-        //TODO rework this shit to consider all levels bro
-        // println!("node values: {:?}",self.nodes.values());
+        let embedding = &self.nodes.get(node_id).unwrap().embedding.clone();
+
+        let mut similarities_vec= Vec::new();
+        let node_list  = self.level_nodes.get(&level).unwrap();
+        //TODO: to implement a greedy approach when brute force > eq_construction
+        //TODO update neighbours of the other nodes also (stuct variable thing)
+        for i in node_list{ 
+            let sec_embedding = self.nodes.get(i).unwrap().embedding.embedding.clone();
+            let similarity = cosine_similarity(&embedding.embedding, &sec_embedding);
+            similarities_vec.push((*i,similarity));
+        }
+        //sorting by most similarity
+        similarities_vec.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        //inserting neighbors after sorting
         let node = self.nodes.get_mut(node_id).unwrap();
-        let embedding = &self.nodes.get(node_id).unwrap().embedding;
-        for i in self.nodes.values(){
-            let similarity = cosine_similarity(&embedding.embedding, &i.embedding.embedding);
-            node.insert_neighbour(level); //fix this shit
-            println!("i:{},similarity: {}",i.embedding.text,similarity);
+        for i in similarities_vec{
+            node.insert_neighbour(&level,&i.0,&i.1,&self.max_neighbours); //fix this shit
         }
     }
 
