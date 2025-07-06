@@ -77,6 +77,7 @@ impl HnswNode{
 
     }
 
+    //TODO when inserting update neighbors of others also 
     fn insert_neighbour(&mut self, level:&u32, node_id:&NodeId, similarity:&f32, max_neighbours:&u32){
         match self.neighbours.get_mut(&level){
             Some(neighbours)=>{
