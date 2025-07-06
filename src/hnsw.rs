@@ -1,7 +1,7 @@
 #![allow(warnings)]
 use crate::grimoire::Embedding;
 use crate::hellindex::cosine_similarity;
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType, SentenceEmbeddingsModel };
 use rand::Rng;
 
@@ -103,6 +103,7 @@ struct HnswEngine{
     embedding_model:SentenceEmbeddingsModel,
     embedding_model_path:String,
     nodes: HashMap<NodeId,HnswNode>, //global pool of nodes
+    level_nodes: HashMap<u32,Vec<NodeId>>,
     current_node_id: NodeId,
     level_probability:f64,
     max_neighbours:u32,
@@ -127,6 +128,7 @@ impl HnswEngine{
             embedding_model,
             embedding_model_path,
             nodes:HashMap::new(),
+            level_nodes:HashMap::new(),
             current_node_id:0,
             level_probability,
             max_neighbours,
@@ -146,6 +148,16 @@ impl HnswEngine{
             //TODO Greedy search here to find neighbors
             let current_node_id = self.current_node_id.clone();
             self.nodes.insert(current_node_id,  node);
+
+            //level nodes relationship 
+            match self.level_nodes.get_mut(&level){
+                Some(node_list)=>{
+                    node_list.push(current_node_id);
+                }
+                None=>{
+                    self.level_nodes.insert(level,vec![current_node_id]);
+                }
+            }
             self.update_neighbours_greedy(&current_node_id,level);
             self.current_node_id = self.current_node_id+1
         }
@@ -158,7 +170,7 @@ impl HnswEngine{
         let embedding = &self.nodes.get(node_id).unwrap().embedding;
         for i in self.nodes.values(){
             let similarity = cosine_similarity(&embedding.embedding, &i.embedding.embedding);
-            node.insert_neighbour(level) //fix this shit
+            node.insert_neighbour(level); //fix this shit
             println!("i:{},similarity: {}",i.embedding.text,similarity);
         }
     }
