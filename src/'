@@ -203,6 +203,7 @@ impl HnswEngine{
         let mut similarities_vec= Vec::new();
         let node_list  = self.level_nodes.get(&level).unwrap();
         //TODO: to implement a greedy approach when brute force > eq_construction
+        //TODO update neighbours of the other nodes also (stuct variable thing)
         for i in node_list{ 
             let sec_embedding = self.nodes.get(i).unwrap().embedding.embedding.clone();
             let similarity = cosine_similarity(&embedding.embedding, &sec_embedding);
@@ -211,14 +212,13 @@ impl HnswEngine{
         //sorting by most similarity
         similarities_vec.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
         //inserting neighbors after sorting
-        //TODO just insert first max_neighbours thing
-        for i in similarities_vec{ 
-            let node = self.nodes.get_mut(node_id).unwrap();
-            node.insert_neighbour(&level,&i.0,&i.1,&self.max_neighbours); 
-            drop(node);
-
+        let node = self.nodes.get_mut(node_id).unwrap();
+        for i in similarities_vec{ //TODO just insert first max_neighbours thing
+            node.insert_neighbour(&level,&i.0,&i.1,&self.max_neighbours); //fix this shit
+            // drop(node);
             let neighbour_node = self.nodes.get_mut(&i.0).unwrap();
-            neighbour_node.insert_neighbour(&level,&i.0,&i.1,&self.max_neighbours); 
+            //inserting to the other node also
+            neighbour_node.insert_neighbour(&level,&i.0,&i.1,&self.max_neighbours); //fix this shit
         }
     }
 
