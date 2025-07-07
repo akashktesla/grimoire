@@ -21,16 +21,16 @@ pub fn main(){
      
     let embedding_model_path:String = "/home/akash/.models/all-MiniLM-L6-v2".to_string();
     let level_probability:f64 = 0.4; //rounded from 0,36;
-    let max_neighbours:u32 = 5;
-    let eq_construction :u32 = 200;
-    let eq_search:u32 = 70;
+    let max_neighbours:usize = 5;
+    let eq_construction :usize = 200;
+    let eq_search:usize = 70;
     let mut engine:HnswEngine = HnswEngine::new(max_level, embedding_model_path, level_probability, eq_construction, eq_search,max_neighbours); 
     engine.load(sentences);
     println!("{:?}",engine);
     
 }
 
-type NodeId = u32;
+type NodeId = usize;
     
 #[derive(Debug, Clone)]
 struct Neighbour {
@@ -53,12 +53,12 @@ impl Neighbour{
 struct HnswNode{
     id:NodeId,
     embedding: Embedding, 
-    level:u32, //level of the node
-    neighbours: HashMap<u32, Vec<Neighbour>> // level - node_id
+    level:usize, //level of the node
+    neighbours: HashMap<usize, Vec<Neighbour>> // level - node_id
 }
 
 impl HnswNode{
-    fn new(id:NodeId,embedding:Embedding,level:u32,neighbours:HashMap<u32,Vec<Neighbour>>)->HnswNode{
+    fn new(id:NodeId,embedding:Embedding,level:usize,neighbours:HashMap<usize,Vec<Neighbour>>)->HnswNode{
         return HnswNode{
             id,
             embedding,
@@ -77,10 +77,10 @@ impl HnswNode{
 
     }
 
-    fn insert_neighbour(&mut self, level:&u32, node_id:&NodeId, similarity:&f32, max_neighbours:&u32){
+    fn insert_neighbour(&mut self, level:&usize, node_id:&NodeId, similarity:&f32, max_neighbours:&usize){
         match self.neighbours.get_mut(&level){
             Some(neighbours)=>{
-                if &(neighbours.len() as u32) > max_neighbours { //aldready full
+                if &(neighbours.len() as usize) > max_neighbours { //aldready full
                     if *similarity < neighbours.last().unwrap().similarity { //optimization 
                         return; //break the function
                     }
@@ -103,16 +103,16 @@ impl HnswNode{
 
 struct HnswEngine{
     entry_point: HnswNode, //dynamically updated
-    max_level:u32, // for tracking
+    max_level:usize, // for tracking
     embedding_model:SentenceEmbeddingsModel,
     embedding_model_path:String,
     nodes: HashMap<NodeId,HnswNode>, //global pool of nodes
-    level_nodes: HashMap<u32,Vec<NodeId>>,
+    level_nodes: HashMap<usize,Vec<NodeId>>,
     current_node_id: NodeId,
     level_probability:f64,
-    max_neighbours:u32,
-    eq_construction:u32,
-    eq_search:u32,
+    max_neighbours:usize,
+    eq_construction:usize,
+    eq_search:usize,
 }
 
 impl Debug for HnswEngine{
@@ -146,8 +146,8 @@ impl Debug for HnswEngine{
 
 
 impl HnswEngine{
-    fn new(max_level:u32, embedding_model_path:String,
-        level_probability:f64, eq_construction:u32, eq_search:u32, max_neighbours:u32) -> HnswEngine{
+    fn new(max_level:usize, embedding_model_path:String,
+        level_probability:f64, eq_construction:usize, eq_search:usize, max_neighbours:usize) -> HnswEngine{
 
 
         let embedding_model = SentenceEmbeddingsBuilder
@@ -197,7 +197,7 @@ impl HnswEngine{
         }
     }
 
-    fn update_neighbours_greedy(&mut self,node_id:&NodeId,level:u32){
+    fn update_neighbours_greedy(&mut self,node_id:&NodeId,level:usize){
         let embedding = &self.nodes.get(node_id).unwrap().embedding.clone();
 
         let mut similarities_vec= Vec::new();
@@ -211,12 +211,14 @@ impl HnswEngine{
         //sorting by most similarity
         similarities_vec.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
         //inserting neighbors after sorting
-        //TODO just insert first max_neighbours thing
-        for i in similarities_vec{ 
-            let node = self.nodes.get_mut(node_id).unwrap();
+        let b = 5;
+        let max_neighbours = self.max_neighbours as usize;
+        let node = self.nodes.get_mut(node_id).unwrap();
+        for i in &similarities_vec[0..self.max_neighbours.min(similarities_vec.len())]{ 
             node.insert_neighbour(&level,&i.0,&i.1,&self.max_neighbours); 
-            drop(node);
-
+        }
+        //updating neighbours
+        for i in &similarities_vec{ 
             let neighbour_node = self.nodes.get_mut(&i.0).unwrap();
             neighbour_node.insert_neighbour(&level,&i.0,&i.1,&self.max_neighbours); 
         }
@@ -226,11 +228,11 @@ impl HnswEngine{
 
     }
 
-    fn generate_level(&self) -> u32 {
+    fn generate_level(&self) -> usize {
         let mut rng = rand::thread_rng();
         let r: f64 = rng.gen_range(0.0..1.0);
         let scale = 1.0 / self.level_probability.ln(); // scale = 1 / ln(1 / prob)
-        let level = (-r.ln() * scale).floor() as u32;
+        let level = (-r.ln() * scale).floor() as usize;
         level.min(self.max_level) // cap to max_level
     }
 
