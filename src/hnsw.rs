@@ -224,7 +224,22 @@ impl HnswEngine{
         }
     }
 
-    fn traverse(user_query:String,){
+    fn traverse(&self,user_query:String,eq_search:Option<usize>){
+        match eq_search{
+            Some(e)=>{
+                let eq_search = e;
+            },
+            None=>{
+                let eq_search = self.eq_search;
+            }
+        }
+        //user_query embedding
+        let uq_embedding = self.generate_embeddings_string(&user_query);
+        //compare with entry point's neighbour and travel
+        //entrypont's neighbours
+        let level = self.entry_point.neighbours
+        //travel to next level
+        //Repeate till no longer better match is found or eq_search is fulfilled
 
     }
 
