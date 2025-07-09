@@ -209,7 +209,7 @@ impl HnswEngine{
             similarities_vec.push((*i,similarity));
         }
         //sorting by most similarity
-        similarities_vec.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        similarities_vec.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         //inserting neighbors after sorting
         let b = 5;
         let max_neighbours = self.max_neighbours as usize;
@@ -236,8 +236,17 @@ impl HnswEngine{
         //user_query embedding
         let uq_embedding = self.generate_embeddings_string(&user_query);
         //compare with entry point's neighbour and travel
+        let level = self.entry_point.level;
+        let mut vec_similarity = Vec::new();
+        for i in self.entry_point.neighbours.get(&level).unwrap(){
+            let neighbour = self.nodes.get(&i.node_id).unwrap();
+            let similarity  = cosine_similarity(&uq_embedding.embedding,&neighbour.embedding.embedding);
+            vec_similarity.push((i.node_id,similarity));
+            //sorting by similarity
+            vec_similarity.sort_by(|a,b|b.1.partial_cmp(&a.1).unwrap());
+            println!("vec_similarity: {:?}",vec_similarity); //Debug
+        }
         //entrypont's neighbours
-        let level = self.entry_point.neighbours
         //travel to next level
         //Repeate till no longer better match is found or eq_search is fulfilled
 
