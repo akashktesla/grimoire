@@ -224,7 +224,7 @@ impl HnswEngine{
         }
     }
 
-    fn traverse(&self,user_query:String,eq_search:Option<usize>)->HnswNode{
+    fn traverse(&self,user_query:String,eq_search:Option<usize>){
         let mut eqs = 0;
         match eq_search{
             Some(e)=>{
@@ -234,32 +234,32 @@ impl HnswEngine{
                 eqs = self.eq_search;
             }
         }
+
         //user_query embedding
-        let uq_embedding = self.generate_embeddings_string(&user_query); 
+        let uq_embedding = self.generate_embeddings_string(&user_query);
         //compare with entry point's neighbour and travel
         let mut level:usize = self.entry_point.level;
-        let mut prime_candidate = &self.entry_point;
-        while level > 0 && eqs > 0 {
+        let prime_candidate:usize = 0;
+        let mut current_node = &self.entry_point;
+        let flag:bool = true;
+        while level > 0 && eqs > 0 && flag{
             let mut highest_similarity:f32 = 0.;
             let mut vec_similarity = Vec::new();
-            for i in prime_candidate.neighbours.get(&level).unwrap() {
+            for i in current_node.neighbours.get(&level).unwrap(){
                 let neighbour = self.nodes.get(&i.node_id).unwrap();
                 let similarity  = cosine_similarity(&uq_embedding.embedding,&neighbour.embedding.embedding);
                 vec_similarity.push((i.node_id,similarity));
+                //sorting by similarity
             }
-            //sorting by similarity
             vec_similarity.sort_by(|a,b|b.1.partial_cmp(&a.1).unwrap());
             println!("vec_similarity: {:?}",vec_similarity); //Debug
             //Travel to that node
-            if vec_similarity[0].1 > highest_similarity{
-                prime_candidate = self.nodes.get(&vec_similarity[0].0).unwrap();
-                highest_similarity = vec_similarity[0].1;
-            }
-            else{
-                level-=1;
-            }
+            current_node = self.nodes.get(&vec_similarity[0].0).unwrap();
+            highest_similarity = vec_similarity[0].1;
         }
-        return prime_candidate.clone();
+        //
+        //Repeate till no longer better match is found or eq_search is fulfilled
+
     }
 
     fn generate_level(&self) -> usize {
