@@ -5,15 +5,17 @@ use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, Sent
 use ::grimoire::grimoire;
 use ::grimoire::hellindex;
 use ::grimoire::hnsw;
+use ::grimoire::collections;
 use pdf_extract::extract_text;
 
 fn main() {
     // hellindex::main();
     // grimoire::main();
-    // hnsw::main();
-    let text = extract_text("../src/The_Art_Of_War.pdf").unwrap();
-    let chunk_size = 
-    println!("text: {:?}",text);
+    hnsw::main();
+    // collections::main();
+
+
+
 
 }
 

@@ -6,32 +6,45 @@ use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, Sent
 use rand::Rng;
 use std::fmt;
 use std::fmt::Debug;
+use pdf_extract::extract_text;
+use crate::collections::KSArray;
 
 pub fn main(){
 
-    let sentences = vec![
-        String::from("Akash is a god"),
-        String::from("Life is all about ups and downs"),
-        String::from("I like rust language it has memory safety"),
-        String::from("Rust is a good language"),
-        String::from("Akash is a great guy"),
-        String::from("God doesn't exist"),
-    ];
+    let text = extract_text("../src/The_Art_Of_War.pdf").unwrap();
+    let chunk_size = 100;
+    let chunks = chunking(text, chunk_size);
+
     let embedding_model_path:String = "/home/akash/.models/all-MiniLM-L6-v2".to_string();
-    let level_probability:f64 = 0.4; //rounded from 0,36;
+    let level_probability:f64 = 0.5; //rounded from 0,36;
     let max_neighbours:usize = 5;
     let eq_construction :usize = 200;
     let eq_search:usize = 70;
     let mut engine:HnswEngine = HnswEngine::new(embedding_model_path, level_probability, eq_construction, eq_search,max_neighbours); 
-    engine.load(sentences);
+    engine.load(chunks);
     println!("Engine: {:?}",engine);
-    let result = engine.traverse(String::from("Rust"),Option::Some(80));
+    let result = engine.traverse(String::from("What does suntzu says about deception"),3,Option::Some(80));
     println!("Result: {:?}",result);
     
 }
 
 type NodeId = usize;
     
+pub fn chunking(text: String, chunk_size: usize) -> Vec<String> {
+    let words: Vec<&str> = text.split_whitespace().collect();
+    let mut chunks = Vec::new();
+
+    for chunk in words.chunks(chunk_size) {
+        let joined = chunk.join(" ");
+        chunks.push(joined);
+    }
+
+    return chunks;
+}
+
+
+
+
 #[derive(Debug, Clone)]
 struct Neighbour {
     node_id: NodeId,
@@ -54,12 +67,12 @@ struct HnswNode{
     id:NodeId,
     embedding: Embedding, 
     level:i64, //level of the node
-    neighbours: HashMap<i64, Vec<Neighbour>> // level - node_id
+    neighbours: HashMap<i64, KSArray> // level - node_id
 }
 
 
 impl HnswNode{
-    fn new(id:NodeId,embedding:Embedding,level:i64,neighbours:HashMap<i64,Vec<Neighbour>>)->HnswNode{
+    fn new(id:NodeId,embedding:Embedding,level:i64,neighbours:HashMap<i64,KSArray>)->HnswNode{
         return HnswNode{
             id,
             embedding,
@@ -77,29 +90,8 @@ impl HnswNode{
         }
 
     }
-
-    fn insert_neighbour(&mut self, level:&i64, node_id:&NodeId, similarity:&f32, max_neighbours:&usize){
-        match self.neighbours.get_mut(&level){
-            Some(neighbours)=>{
-                if &(neighbours.len() as usize) > max_neighbours { //aldready full
-                    if *similarity < neighbours.last().unwrap().similarity { //optimization 
-                        return; //break the function
-                    }
-                    neighbours.push(Neighbour::new(*node_id,*similarity));
-                    neighbours.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
-                    neighbours.pop();
-                }
-                else{
-                    neighbours.push(Neighbour::new(*node_id,*similarity));
-                    neighbours.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
-                }
-            },
-            None=>{
-                self.neighbours.insert(*level,vec![Neighbour::new(*node_id,*similarity)]);
-            }
-        }
-    }
 }
+
 
 
 struct HnswEngine{
@@ -202,7 +194,6 @@ impl HnswEngine{
 
     fn update_neighbours_greedy(&mut self,node_id:&NodeId,level:i64){
         let embedding = &self.nodes.get(node_id).unwrap().embedding.clone();
-
         let mut similarities_vec= Vec::new();
         let node_list  = self.level_nodes.get(&level).unwrap();
         //TODO: to implement a greedy approach when brute force > eq_construction
@@ -220,16 +211,33 @@ impl HnswEngine{
         let max_neighbours = self.max_neighbours as usize;
         let node = self.nodes.get_mut(node_id).unwrap();
         for i in &similarities_vec[0..self.max_neighbours.min(similarities_vec.len())]{ 
-            node.insert_neighbour(&level,&i.0,&i.1,&self.max_neighbours); 
+            match node.neighbours.get_mut(&level){
+                Some(neighbour) => {
+                    neighbour.insert_node(&i.0,&i.1);
+                }
+                None => {
+                    node.neighbours.insert(level,KSArray::new(self.max_neighbours));
+                    node.neighbours.get_mut(&level).unwrap().insert_node(&i.0,&i.1);
+                }
+            }
         }
         //updating neighbours
-        println!("similarities_vec:{:?}",similarities_vec);
+        // println!("similarities_vec:{:?}",similarities_vec);
         for i in &similarities_vec{ 
-            self.nodes.get_mut(&i.0).unwrap().insert_neighbour(&level,&node_id,&i.1,&self.max_neighbours); 
+            let mut node = self.nodes.get_mut(&i.0).unwrap();
+            match node.neighbours.get_mut(&level){
+                Some(neighbour) => {
+                    neighbour.insert_node(&node_id,&i.1);
+                }
+                None => {
+                    node.neighbours.insert(level,KSArray::new(self.max_neighbours));
+                    node.neighbours.get_mut(&level).unwrap().insert_node(&node_id,&i.1);
+                }
+            }
         }
     }
 
-    fn traverse(&self,user_query:String,eq_search:Option<usize>)->HnswNode{
+    fn traverse(&self,user_query:String,k:usize,eq_search:Option<usize>)->HnswNode{
         let mut eqs = 0;
         match eq_search{
             Some(e)=>{
@@ -239,8 +247,6 @@ impl HnswEngine{
                 eqs = self.eq_search;
             }
         }
-        // println!("eqs: {}",eqs);
-        // println!("entry_point: {:?}",self.entry_point);
         //user_query embedding
         let uq_embedding = self.generate_embeddings_string(&user_query); 
         //compare with entry point's neighbour and travel
@@ -251,7 +257,7 @@ impl HnswEngine{
         while level >= 0 && eqs > 0 {
             eqs-=1;
             let mut vec_similarity = Vec::new();
-            for i in prime_candidate.neighbours.get(&level).unwrap() {
+            for i in &prime_candidate.neighbours.get(&level).unwrap().nodes {
                 let neighbour = self.nodes.get(&i.node_id).unwrap();
                 let similarity  = cosine_similarity(&uq_embedding.embedding,&neighbour.embedding.embedding);
                 vec_similarity.push((i.node_id,similarity));
