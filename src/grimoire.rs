@@ -1,4 +1,6 @@
 #![allow(warnings)]
+use std::fmt;
+use std::fmt::Debug;
 use std::fs::{write, read};
 use std::io::{self, Read};
 use std::fs;
@@ -18,11 +20,23 @@ pub fn main() {
     // println!("vdb: {:?}",vdb);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Embedding{
     pub text: String,
     pub embedding: Vec<f32>
 }
+
+impl Debug for Embedding{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        return write!(f, "Embedding: 
+            Text: {:?}
+            ",
+            self.text )
+}
+}
+    
+
+
 impl Embedding{
     pub fn new(text:String, embedding:Vec<f32>)->Self{
         return Embedding{
