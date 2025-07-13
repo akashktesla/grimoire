@@ -25,7 +25,7 @@ pub fn main(){
     println!("Engine: {:#?}",engine.level_nodes);
     let result = engine.traverse(&String::from("All warfare is based on deception"),&3);
     println!("Result: {:?}",result);
-    // let result = engine.brute_force(String::from("What does suntzu says about deception"),3);
+    // let result = engine.brute_force(String::from("All warfare is based on deception"),3);
     // println!("Result: {:?}",result);
     for i in result.nodes{
         println!("{:?}",engine.nodes.get(&i.node_id).unwrap().embedding.text);
@@ -195,69 +195,88 @@ impl HnswEngine{
                         self.level_nodes.insert(level,vec![current_node_id]);
                     }
                 }
-                self.update_neighbours_greedy(&current_node_id,level);
+                self.update_neighbours_greedy(&current_node_id,&level);
                 self.current_node_id = self.current_node_id+1;
                 level -= 1;
             }
         }
     }
 
-    fn update_neighbours_greedy(&mut self,node_id:&NodeId,level:i64){
-        //greedy
-        // TODO I have to update this shit level by level neighbours... this will take time 
-        // let node = self.nodes.get(&node_id).unwrap();
-        // let neighbours = self.traverse_core(&node.embedding.text,&self.max_neighbours,&self.eq_construction);
-        // for i in neighbours.nodes{
-        //     match node.neighbours.get_mut(&level){
-        //         Some(neighbour) => {
-        //             neighbour.insert_node(&i.0,&i.1);
-        //         }
-        //         None => {
-        //             node.neighbours.insert(level,KSArray::new(self.max_neighbours));
-        //             node.neighbours.get_mut(&level).unwrap().insert_node(&i.0,&i.1);
-        //         }
-        //     }
-        // }
+    fn update_neighbours_greedy(&mut self,node_id:&NodeId,level:&i64){
+        let node =  self.nodes.get(node_id).unwrap();
+        // println!("len: {:?}, eq_construction: {:?}",self.level_nodes.get(level).unwrap().len(),self.eq_construction);
+        if self.level_nodes.get(level).unwrap().len()>self.eq_construction{
+            //greedy
+            let neighbours = self.traverse_construction(&node.embedding.text,level);
+            // println!("neighbours: {:?}",neighbours);
+            let node = self.nodes.get_mut(node_id).unwrap();
+            for i in &neighbours.nodes{
+                match node.neighbours.get_mut(&level){
+                    Some(neighbour) => {
+                        neighbour.insert_node(&i.node_id,&i.similarity);
+                    }
+                    none => {
+                        node.neighbours.insert(*level,KSArray::new(self.max_neighbours));
+                        node.neighbours.get_mut(&level).unwrap().insert_node(&i.node_id,&i.similarity);
+                    }
+                }
+            }
+            //updating neighbours
+            // println!("similarities_vec:{:?}",similarities_vec);
+            for i in &neighbours.nodes{ 
+                match node.neighbours.get_mut(&level){
+                    Some(neighbour) => {
+                        neighbour.insert_node(&node_id,&i.similarity);
+                    }
+                    none => {
+                        node.neighbours.insert(*level,KSArray::new(self.max_neighbours));
+                        node.neighbours.get_mut(&level).unwrap().insert_node(&node_id,&i.similarity);
+                    }
+                } 
+            }
+        }
 
-        let embedding = &self.nodes.get(node_id).unwrap().embedding.clone();
-        let mut similarities_vec= Vec::new();
-        let node_list  = self.level_nodes.get(&level).unwrap();
-        //TODO: to implement a greedy approach when brute force > eq_construction
-        for i in node_list{ 
-            if node_id !=i{ //ignore calc similarity for same shit
-                let sec_embedding = self.nodes.get(i).unwrap().embedding.embedding.clone();
-                let similarity = cosine_similarity(&embedding.embedding, &sec_embedding);
-                similarities_vec.push((*i,similarity));
-            }
-        }
-        //sorting by most similarity
-        similarities_vec.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        //inserting neighbors after sorting
-        let b = 5;
-        let max_neighbours = self.max_neighbours as usize;
-        let node = self.nodes.get_mut(node_id).unwrap();
-        for i in &similarities_vec[0..self.max_neighbours.min(similarities_vec.len())]{ 
-            match node.neighbours.get_mut(&level){
-                Some(neighbour) => {
-                    neighbour.insert_node(&i.0,&i.1);
-                }
-                None => {
-                    node.neighbours.insert(level,KSArray::new(self.max_neighbours));
-                    node.neighbours.get_mut(&level).unwrap().insert_node(&i.0,&i.1);
+        else{//bruiteforce
+            let embedding = &node.embedding.clone();
+            let mut similarities_vec= Vec::new();
+            let node_list  = self.level_nodes.get(&level).unwrap();
+            //TODO: to implement a greedy approach when brute force > eq_construction
+            for i in node_list{ 
+                if node_id !=i{ //ignore calc similarity for same shit
+                    let sec_embedding = self.nodes.get(i).unwrap().embedding.embedding.clone();
+                    let similarity = cosine_similarity(&embedding.embedding, &sec_embedding);
+                    similarities_vec.push((*i,similarity));
                 }
             }
-        }
-        //updating neighbours
-        // println!("similarities_vec:{:?}",similarities_vec);
-        for i in &similarities_vec{ 
-            let mut node = self.nodes.get_mut(&i.0).unwrap();
-            match node.neighbours.get_mut(&level){
-                Some(neighbour) => {
-                    neighbour.insert_node(&node_id,&i.1);
+            //sorting by most similarity
+            similarities_vec.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+            //inserting neighbors after sorting
+            let b = 5;
+            let max_neighbours = self.max_neighbours as usize;
+            let node = self.nodes.get_mut(node_id).unwrap();
+            for i in &similarities_vec[0..self.max_neighbours.min(similarities_vec.len())]{ 
+                match node.neighbours.get_mut(&level){
+                    Some(neighbour) => {
+                        neighbour.insert_node(&i.0,&i.1);
+                    }
+                    None => {
+                        node.neighbours.insert(*level,KSArray::new(self.max_neighbours));
+                        node.neighbours.get_mut(&level).unwrap().insert_node(&i.0,&i.1);
+                    }
                 }
-                None => {
-                    node.neighbours.insert(level,KSArray::new(self.max_neighbours));
-                    node.neighbours.get_mut(&level).unwrap().insert_node(&node_id,&i.1);
+            }
+            //updating neighbours
+            // println!("similarities_vec:{:?}",similarities_vec);
+            for i in &similarities_vec{ 
+                let mut node = self.nodes.get_mut(&i.0).unwrap();
+                match node.neighbours.get_mut(&level){
+                    Some(neighbour) => {
+                        neighbour.insert_node(&node_id,&i.1);
+                    }
+                    None => {
+                        node.neighbours.insert(*level,KSArray::new(self.max_neighbours));
+                        node.neighbours.get_mut(&level).unwrap().insert_node(&node_id,&i.1);
+                    }
                 }
             }
         }
@@ -277,6 +296,39 @@ impl HnswEngine{
 
     fn traverse(&self,user_query:&String,k:&usize)->KSArray{
         return self.traverse_core(user_query,k,&self.eq_search);
+    }
+
+    fn traverse_construction(&self,user_query:&String,level:&i64,)->KSArray{
+        let mut returns = KSArray::new(self.max_neighbours);
+        let uq_embedding = self.generate_embeddings_string(user_query); 
+        let mut eqs = self.eq_construction;
+        let mut prime_candidate = self.nodes.get(&self.level_nodes.get(&level).unwrap()[0]).unwrap();
+        let mut highest_similarity=0.;
+        while eqs > 0 {
+            eqs-=1;
+            let mut vec_similarity = Vec::new();
+            match  prime_candidate.neighbours.get(&level) {
+                Some(prime_candidate_neighbours)=>{
+                    for i in &prime_candidate_neighbours.nodes{
+                        let neighbour = self.nodes.get(&i.node_id).unwrap();
+                        let similarity  = cosine_similarity(&uq_embedding.embedding,&neighbour.embedding.embedding);
+                        vec_similarity.push((i.node_id,similarity));
+                        returns.insert_node(&i.node_id,&similarity);
+                    }
+                    //sorting by similarity
+                    vec_similarity.sort_by(|a,b|b.1.partial_cmp(&a.1).unwrap());
+                    //Travel to that node
+                    if vec_similarity[0].1 > highest_similarity{
+                        prime_candidate = self.nodes.get(&vec_similarity[0].0).unwrap();
+                        highest_similarity = vec_similarity[0].1;
+                    }
+                }
+                None=>{
+                    eqs = 0;
+                }
+            }
+        }
+        return returns;
     }
 
     fn traverse_core(&self,user_query:&String,k:&usize,eq_search:&usize)->KSArray{
@@ -306,7 +358,6 @@ impl HnswEngine{
                     //Travel to that node
                     if vec_similarity[0].1 > highest_similarity{
                         prime_candidate = self.nodes.get(&vec_similarity[0].0).unwrap();
-                        returns.insert_node(&vec_similarity[0].0,&vec_similarity[0].1);
                         highest_similarity = vec_similarity[0].1;
                     }
                     else{
