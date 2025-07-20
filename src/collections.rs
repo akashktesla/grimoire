@@ -96,12 +96,9 @@ impl KDArray{
     }
 
     pub fn insert_node(&mut self, node_id:&usize, embedding:&Embedding){
-        println!("inserting node");
-        if self.inserted_ids.contains(node_id){
-            return;
-        }
-        //NOTE Better just change this as Neighbours structure or something bro this collection doesn't
-        //make sense anymore or mayb it does who knows
+    if !self.inserted_ids.insert(*node_id) {
+        return; // Already inserted
+           }
         self.inserted_ids.insert(*node_id);
         let core_similarity = cosine_similarity(&self.core_node.embedding.embedding,&embedding.embedding);
         if self.nodes.len() >= self.k{ //aldready full
@@ -124,7 +121,6 @@ impl KDArray{
             let  diversity_score = self.k1*(self.nodes.len() as f32-sos)+self.k2*core_similarity;
             self.nodes.push(KDNode::new(*node_id,embedding.clone(),diversity_score));
         }
-        println!("finish inserting node");
     }
 } 
 

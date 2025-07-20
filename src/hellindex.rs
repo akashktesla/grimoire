@@ -99,9 +99,6 @@ pub fn calculate_difference(mcn1:Vec<i32>,mcn2:Vec<i32>,ecn1:Vec<i32>,ecn2:Vec<i
             .zip(ecn2)
             .map(|(a,b)|(a-b).abs())
             .sum();
-
-
-
     return 0;
 }
 

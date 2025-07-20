@@ -8,6 +8,11 @@ use std::fmt;
 use std::fmt::Debug;
 use pdf_extract::extract_text;
 use crate::collections::{KDArray,KSArray};
+use std::time::Instant;
+
+
+// your insert_node logic
+
 
 pub fn main(){
 
@@ -20,8 +25,13 @@ pub fn main(){
     let max_neighbours:usize = usize::MAX;
     let eq_construction :usize = 200;
     let eq_search:usize = 70;
+
+    let start = Instant::now();
     let mut engine:HnswEngine = HnswEngine::new(embedding_model_path, level_probability, eq_construction, eq_search,max_neighbours); 
     engine.load(chunks);
+    let duration = start.elapsed();
+    println!("insert_node took {:?}", duration);
+
     println!("Engine: {:#?}",engine.level_nodes);
     let result = engine.traverse_max(&String::from("All warfare is based on deception"),&3);
     println!("Result: {:?}",result);
@@ -202,69 +212,35 @@ impl HnswEngine{
         }
     }
 
-    fn update_neighbours_greedy(&mut self,node_id:&NodeId,level:&i64){
-        let mut node = self.nodes.get(node_id).unwrap().clone();
-        let mut returns = KDArray::new(node_id,&node.embedding,self.max_neighbours,1.,1.);
-        let uq_embedding = self.generate_embeddings_string(&node.embedding.text); 
-        let mut eqs = self.eq_construction;
-        //primary candidate first node from level_nodes
-        let mut prime_candidate = &self.nodes.get(&self.level_nodes.get(&level).unwrap()[0]).unwrap().clone();
-        let mut highest_similarity=0.;
-        while eqs > 0 {
-            eqs-=1;
-            let mut vec_similarity = Vec::new();
-            match  prime_candidate.neighbours.get(&level) {
-                Some(prime_candidate_neighbours)=>{
-                    for i in &prime_candidate_neighbours.nodes{
-                        let mut neighbour = self.nodes.get(&i.node_id).unwrap().clone();
-                        let similarity  = cosine_similarity(&uq_embedding.embedding,&neighbour.embedding.embedding);
-                        vec_similarity.push((i.node_id,similarity));
-
-                        //entry from node to a neighbour
-                        node.neighbours.entry(*level)
-                            .or_insert_with(|| KDArray::new(node_id,&node.embedding,self.max_neighbours,1.,1.))
-                            .insert_node(&i.node_id,&neighbour.embedding);
-
-                        //entry to neighbour also double way
-                        neighbour.neighbours.entry(*level)
-                            .or_insert_with(|| KDArray::new(node_id,&neighbour.embedding,self.max_neighbours,1.,1.))
-                            .insert_node(&node_id,&node.embedding);
-                        }
-                    //sorting by similarity
-                    vec_similarity.sort_by(|a,b|b.1.partial_cmp(&a.1).unwrap());
-                    //Travel to that node
-                    if vec_similarity[0].1 > highest_similarity{
-                        prime_candidate = self.nodes.get(&vec_similarity[0].0).unwrap();
-                        highest_similarity = vec_similarity[0].1;
-                    }
-                }
-                None=>{
-                    eqs = 0;
-                }
-            }
-        }
-    }
-
     fn update_neighbours_brute_force(&mut self,node_id:&NodeId,level:&i64){
         let mut node_clone:HnswNode = self.nodes.get(node_id).unwrap().clone();
         let node_list  = self.level_nodes.get(&level).unwrap();
+        let mut similarity_vec = Vec::new();
         for i in node_list{ 
-            if node_id !=i{ //ignore calc similarity for same shit
-                let mut neighbour_clone = self.nodes.get(&i).unwrap().clone();
-                //entry from node to a neighbour
-                let mut node:&mut HnswNode =  self.nodes.get_mut(node_id).unwrap();
-                node.neighbours.entry(*level)
-                    .or_insert_with(|| KDArray::new(node_id,&node.embedding,self.max_neighbours,1.,1.))
-                    .insert_node(&i,&neighbour_clone.embedding);
-
-                let mut neighbour:&mut HnswNode =  self.nodes.get_mut(i).unwrap();
-                //entry to neighbour also double way
-                neighbour.neighbours.entry(*level)
-                    .or_insert_with(|| KDArray::new(node_id,&neighbour.embedding,self.max_neighbours,1.,1.))
-                    .insert_node(&node_id,&node_clone.embedding);
+            if node_id ==i{ //ignore calc similarity for same shit
+                break;
             }
+            let mut neighbour_clone = self.nodes.get(i).unwrap().clone();
+            let similarity = cosine_similarity(&node_clone.embedding.embedding, &neighbour_clone.embedding.embedding);
+            similarity_vec.push((i,similarity));
         }
+        for i in &similarity_vec[0..16.min(similarity_vec.len())]{
+            let mut neighbour_clone = self.nodes.get(i.0).unwrap().clone();
+            //entry from node to a neighbour
+            let mut node:&mut HnswNode =  self.nodes.get_mut(node_id).unwrap();
+            node.neighbours.entry(*level)
+                .or_insert_with(|| KDArray::new(node_id,&node.embedding,self.max_neighbours,1.,1.))
+                .insert_node(&i.0,&neighbour_clone.embedding);
+
+            let mut neighbour:&mut HnswNode =  self.nodes.get_mut(i.0).unwrap();
+            //entry to neighbour also double way
+            neighbour.neighbours.entry(*level)
+                .or_insert_with(|| KDArray::new(node_id,&neighbour.embedding,self.max_neighbours,1.,1.))
+                .insert_node(&node_id,&node_clone.embedding);
+            }
+
     }
+
 
     fn brute_force(&self,user_query:String,k:usize)->KSArray{
         let mut returns = KSArray::new(k);
