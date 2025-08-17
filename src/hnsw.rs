@@ -10,10 +10,6 @@ use pdf_extract::extract_text;
 use crate::collections::{KDArray,KSArray};
 use std::time::Instant;
 
-
-// your insert_node logic
-
-
 pub fn main(){
 
     let text = extract_text("../src/The_Art_Of_War.pdf").unwrap();
@@ -222,8 +218,9 @@ impl HnswEngine{
             }
             let mut neighbour_clone = self.nodes.get(i).unwrap().clone();
             let similarity = cosine_similarity(&node_clone.embedding.embedding, &neighbour_clone.embedding.embedding);
-            similarity_vec.push((i,similarity));
+            similarity_vec.push((i,similarity)); 
         }
+
         for i in &similarity_vec[0..16.min(similarity_vec.len())]{
             let mut neighbour_clone = self.nodes.get(i.0).unwrap().clone();
             //entry from node to a neighbour

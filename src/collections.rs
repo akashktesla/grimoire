@@ -94,34 +94,39 @@ impl KDArray{
             k2
         };
     }
-
-    pub fn insert_node(&mut self, node_id:&usize, embedding:&Embedding){
-    if !self.inserted_ids.insert(*node_id) {
-        return; // Already inserted
-           }
-        self.inserted_ids.insert(*node_id);
-        let core_similarity = cosine_similarity(&self.core_node.embedding.embedding,&embedding.embedding);
-        if self.nodes.len() >= self.k{ //aldready full
-            //sum of similarity
-            let mut sos = 0.;
-            for i in &self.nodes{
-                let similarity  = cosine_similarity(&embedding.embedding,&i.embedding.embedding);
-                sos += similarity;//minimize this
-            }
-            let  diversity_score = self.k1*(self.nodes.len() as f32-sos)+self.k2*core_similarity;
-            self.nodes.sort_by(|a,b|b.diversity_score.partial_cmp(&a.diversity_score).unwrap());
-            self.nodes.pop();
+    pub fn insert_node(&mut self, node_id: &usize, embedding: &Embedding) {
+        // Skip if already inserted
+        if !self.inserted_ids.insert(*node_id) {
+            return;
         }
-        else{
-            let mut sos = 0.;
-            for i in &self.nodes{
-                let similarity  = cosine_similarity(&embedding.embedding,&i.embedding.embedding);
-                sos += similarity;//minimize this
+
+        // Compute similarity to core node once
+        let core_similarity = cosine_similarity(&self.core_node.embedding.embedding, &embedding.embedding);
+
+        // Precompute sum of similarities to existing nodes
+        let sos: f32 = self.nodes.iter()
+            .map(|n| cosine_similarity(&embedding.embedding, &n.embedding.embedding))
+            .sum();
+
+        let diversity_score = self.k1 * ((self.nodes.len() as f32) - sos) + self.k2 * core_similarity;
+        let new_node = KDNode::new(*node_id, embedding.clone(), diversity_score);
+
+        if self.nodes.len() < self.k {
+            // Simply push if under capacity
+            self.nodes.push(new_node);
+            return;
+        }
+        // Already full: Find the *worst* node (min score), and replace if new one is better
+        if let Some((worst_idx, worst_score)) = self.nodes.iter()
+            .enumerate()
+                .min_by(|(_, a), (_, b)| a.diversity_score.partial_cmp(&b.diversity_score).unwrap()) 
+        {
+            if diversity_score > worst_score.diversity_score {
+                self.nodes[worst_idx] = new_node;
             }
-            let  diversity_score = self.k1*(self.nodes.len() as f32-sos)+self.k2*core_similarity;
-            self.nodes.push(KDNode::new(*node_id,embedding.clone(),diversity_score));
         }
     }
+
 } 
 
 

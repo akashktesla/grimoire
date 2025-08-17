@@ -102,7 +102,22 @@ pub fn calculate_difference(mcn1:Vec<i32>,mcn2:Vec<i32>,ecn1:Vec<i32>,ecn2:Vec<i
     return 0;
 }
 
-pub fn cosine_similarity(a: &Vec<f32>, b: &Vec<f32>) -> f32 {
+#[inline(always)]
+pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    let (mut dot, mut norm_a, mut norm_b) = (0.0f32, 0.0f32, 0.0f32);
+    for i in 0..a.len() {
+        let x = a[i];
+        let y = b[i];
+        dot += x * y;
+        norm_a += x * x;
+        norm_b += y * y;
+    }
+
+    let denom = norm_a.sqrt() * norm_b.sqrt();
+    if denom == 0.0 { 0.0 } else { dot / denom }
+}
+
+pub fn cosine_similarity_bkp(a: &Vec<f32>, b: &Vec<f32>) -> f32 {
     let (mut dot, mut norm_a, mut norm_b) = (0.0f32, 0.0f32, 0.0f32);
     for (x, y) in a.iter().zip(b.iter()) {
         dot += x * y;
