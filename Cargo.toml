@@ -8,7 +8,8 @@ bincode = "2.0.1"
 pdf-extract = "0.9.0"
 rand = "0.9.1"
 rayon = "1.10.0"
-# rust-bert = "0.23.0"
+rust-bert = "0.23.0"
 rustc-hash = "2.1.1"
 serde = { version = "1.0.219", features = ["derive"] }
 tch = "0.17.0"
+console = { version = "0.16", features = ["std"] }
