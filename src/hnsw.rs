@@ -75,9 +75,9 @@ impl Neighbour{
 
 
 #[derive(Clone, Debug)]
-struct HnswNode{
+pub struct HnswNode{
     id:NodeId,
-    embedding: Embedding, 
+    pub embedding: Embedding, 
     level:i64, //level of the node
     neighbours: HashMap<i64, KDArray> // level - node_id
 }
@@ -106,12 +106,12 @@ impl HnswNode{
 
 
 
-struct HnswEngine{
+pub struct HnswEngine{
     entry_point: NodeId, //dynamically updated
     max_level:i64, // for tracking
     embedding_model:SentenceEmbeddingsModel,
     embedding_model_path:String,
-    nodes: HashMap<NodeId,HnswNode>, //global pool of nodes
+    pub nodes: HashMap<NodeId,HnswNode>, //global pool of nodes
     level_nodes: HashMap<i64,Vec<NodeId>>,
     current_node_id: NodeId,
     level_probability:f64,
@@ -151,7 +151,7 @@ impl Debug for HnswEngine{
 
 
 impl HnswEngine{
-    fn new(embedding_model_path:String,
+    pub fn new(embedding_model_path:String,
         level_probability:f64, eq_construction:usize, eq_search:usize, max_neighbours:usize) -> HnswEngine{
 
 
@@ -174,10 +174,9 @@ impl HnswEngine{
                 max_neighbours,
                 eq_construction,
                 eq_search,
-            }
-    }
+            } }
 
-    fn load(&mut self, chunks:Vec<String>){
+    pub fn load(&mut self, chunks:Vec<String>){
         for i in chunks{
             let embedding = self.generate_embeddings_string(&i);
             let mut level = self.generate_level();
@@ -251,7 +250,7 @@ impl HnswEngine{
         return returns;
     }
 
-    fn traverse(&self,user_query:&String,k:&usize)->KSArray{
+    pub fn traverse(&self,user_query:&String,k:&usize)->KSArray{
         return self.traverse_core(user_query,k,&self.eq_search);
     }
     fn traverse_max(&self,user_query:&String,k:&usize)->KSArray{

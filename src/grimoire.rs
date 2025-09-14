@@ -10,7 +10,8 @@ use rust_bert::pipelines::sentence_embeddings::{ SentenceEmbeddingsBuilder, Sent
 use tch::Device;
 
 pub fn main() {
-    let path = "/home/akash/projects/grimoire/src/test.grm".to_string(); let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
+    let path = "/home/akash/projects/grimoire/src/test.grm".to_string();
+    let payload = vec!["Akash likes cooking".to_string(),"Ram does all night coding".to_string()];
     let emodel_path = "/home/akash/.models/all-MiniLM-L6-v2".to_string();
     let mut vdb = Grimoire::new(path,payload,10,emodel_path);
     // vdb.save_db();
@@ -52,7 +53,7 @@ impl Embedding{
     }
 }
 
-struct Grimoire{
+pub struct Grimoire{
     path: String,
     db: FxHashMap<Vec<Vec<i32>>,Vec<Embedding>>, //chunk_number -> Embedding
     rcn:BTreeMap<i32,Vec<Vec<Vec<i32>>>>, //Rank -> Chunk number lookup^
@@ -63,7 +64,7 @@ struct Grimoire{
 
 impl Grimoire{
 
-    fn new(path: String,payload: Vec<String>,chunk_size:i32,embedding_model_path:String) -> Self {
+    pub fn new(path: String,payload: Vec<String>,chunk_size:i32,embedding_model_path:String) -> Self {
         let embedding_model = SentenceEmbeddingsBuilder
             ::local(&embedding_model_path)
             .create_model()
@@ -94,7 +95,7 @@ impl Grimoire{
         };
     }
 
-    fn generate_embeddings_vec(&self,payload:Vec<String>)->Vec<Vec<f32>>{
+    pub fn generate_embeddings_vec(&self,payload:Vec<String>)->Vec<Vec<f32>>{
         return self.embedding_model.encode(&payload).expect("Failed to encode the string");
     }
 
@@ -138,15 +139,15 @@ impl Grimoire{
 
     }
 
-    fn load_db(&self){
+    pub fn load_db(&self){
         self.deserialize();
     }
 
-    fn insert_string(&mut self,payload:String){
+    pub fn insert_string(&mut self,payload:String){
         //TODO later
     }
 
-    fn similarity_search(&self,text:String){
+    pub fn similarity_search(&self,text:String){
         let embeddings = self.generate_embeddings_string(&text);
         let (user_chunk_id,user_rank) = generate_metadata(&embeddings,&self.chunk_size);
         // println!("user_chunk_id: {:?}, user_rank: {:?}",user_chunk_id,user_rank);
